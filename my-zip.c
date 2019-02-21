@@ -26,27 +26,29 @@ int main(int argc, char *argv[]) {
 
     while ((getline(&buffer, &bufferSize, fp)) > 0) {
         //printf("%s", buffer);
-    }
+   //}
 
-    int j;
-    chara = buffer[0];
-    other = buffer[0];
-    count = 0;
-    for (j = 0; j < strlen(buffer); j++) {
-      if (chara != other) {
-          fwrite(&count, sizeof(int), 1, stdout);
-          fputc(other, stdout);
-          //printf("%d", count);
-          //printf("%c", other);
-          count = 1;
-      }
-      else {
-          count++;
-      }
+        int j;
+        chara = buffer[0];
+        other = buffer[0];
+        count = 0;
+        for (j = 0; j < strlen(buffer); j++) {
+          if (chara != other) {
+              fwrite(&count, sizeof(int), 1, stdout);
+              fputc(other, stdout);
+              //printf("%d", count);
+              //printf("%c", other);
+              count = 1;
+          }
+          else {
+              count++;
+          }
 
-      other = chara;
-      chara = buffer[j+1];
-    }
+          other = chara;
+          chara = buffer[j+1];
+        }
+
+    }//end while
 
     fclose(fp);
   }
