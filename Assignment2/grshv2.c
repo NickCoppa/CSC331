@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
           }//end else
 
           free(command);
+          free(pathname);
 
           printf("grsh> ");
       }//end while
