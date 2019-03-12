@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
   char **paths;
   char *pathname;
   int pathCount = 0;
+  char** myargs;
 
   if (argc == 1) {
       printf("grsh> ");
@@ -51,14 +52,16 @@ int main(int argc, char *argv[]) {
 */
           int i;
           char* ctoken;
-          char *myargs[count+1];
+          myargs = malloc((count+1) * (sizeof(char *)));
           char *commandDup = strdup(command);
           for (i = 0; i < count; i++) {
             ctoken = strtok_r(commandDup, " ", &commandDup);
-            myargs[i] = strdup(ctoken);
-            //printf("%s ", myargs[i]);
+            //myargs[i] = strdup(ctoken);
+            myargs[i] = malloc((strlen(ctoken)) * (sizeof(char)));
+            strcpy(myargs[i], ctoken);
+            printf("%s ", myargs[i]);
           }
-          //printf("\n");
+          printf("\n");
           myargs[count] = NULL;
 
           //exit: built-in command
@@ -99,7 +102,7 @@ int main(int argc, char *argv[]) {
                 strcat(pathname, paths[i]);
                 strcat(pathname, "/");
                 strcat(pathname, myargs[0]);
-                //printf("%s", pathname);
+                printf("%s", pathname);
 
                 if ((access(pathname, X_OK)) == 0) {
                   success = 1;
@@ -129,7 +132,13 @@ int main(int argc, char *argv[]) {
           }//end else
 
           free(command);
-          free(pathname);
+          //free(pathname);
+/*
+          for (i = 0; i < count; i++) {
+            free(myargs[i]);
+          }
+*/
+          free(myargs);
 
           printf("grsh> ");
       }//end while
