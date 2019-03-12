@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
       //the shell interactive loop
       while (getline(&line, &bufferSize, stdin) > 0) {
           //allocate enough memory to store the trimmed command
-          command = malloc((strlen(line)) + 1);
+          command = (char *)calloc(1, (strlen(line)) + 1);
           //this goes outside the while loop to prevent a space before the trimmed command
           token = strtok_r(line, " \n\t", &line);
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
               count++;
           }//end while
 
-          //printf("%s\n", command);
+          //printf("%s 1st\n", command);
           //printf("%d\n", count);
 /*
           if ((strcmp(command, "exit")) == 0) {
@@ -52,16 +52,19 @@ int main(int argc, char *argv[]) {
 */
           int i;
           char* ctoken;
-          myargs = malloc((count+1) * (sizeof(char *)));
-          char *commandDup = strdup(command);
+          myargs = (char **)calloc((count+1), (sizeof(char *)));
+          //char *commandDup = strdup(command);
+          char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
+          //char *commandDup[(strlen(command))+1];
+          strcpy(commandDup, command);
           for (i = 0; i < count; i++) {
             ctoken = strtok_r(commandDup, " ", &commandDup);
             //myargs[i] = strdup(ctoken);
-            myargs[i] = malloc((strlen(ctoken)) * (sizeof(char)));
+            myargs[i] = calloc((strlen(ctoken)), (sizeof(char)));
             strcpy(myargs[i], ctoken);
-            printf("%s ", myargs[i]);
+            //printf("%s ", myargs[i]);
           }
-          printf("\n");
+          //printf("2nd\n");
           myargs[count] = NULL;
 
           //exit: built-in command
@@ -98,11 +101,11 @@ int main(int argc, char *argv[]) {
               int success = 0;
               for (i = 0; i < pathCount; i++) {
                 //printf("%s\n", paths[i]);
-                pathname = malloc((strlen(paths[i])) + (strlen(myargs[0])) + 1);
+                pathname = (char *)calloc(1, (strlen(paths[i])) + (strlen(myargs[0])) + 2);
                 strcat(pathname, paths[i]);
                 strcat(pathname, "/");
                 strcat(pathname, myargs[0]);
-                printf("%s", pathname);
+                //printf("%s", pathname);
 
                 if ((access(pathname, X_OK)) == 0) {
                   success = 1;
@@ -122,6 +125,8 @@ int main(int argc, char *argv[]) {
                       //printf("(pid:%d) Parent UwU (child:%d)\n", (int) getpid(), wc);
                   }//end else
                 }//end if
+
+                free(pathname);
               }//end for
 
               if (success == 0) {
@@ -132,12 +137,11 @@ int main(int argc, char *argv[]) {
           }//end else
 
           free(command);
-          //free(pathname);
-/*
+
           for (i = 0; i < count; i++) {
             free(myargs[i]);
           }
-*/
+
           free(myargs);
 
           printf("grsh> ");
