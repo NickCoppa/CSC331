@@ -65,7 +65,6 @@ int main(int argc, char *argv[]) {
             //printf("%s ", myargs[i]);
           }
           //printf("2nd\n");
-          myargs[count] = NULL;
 
           //exit: built-in command
           if ((strcmp(command, "exit")) == 0) {
