@@ -1,5 +1,5 @@
 /*
-* File : grshv6.c
+* File : grshv8.c
 */
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,33 +11,48 @@ int main(int argc, char *argv[]) {
   char *line = NULL; //what was inputted into the command line
   char *command = NULL; //the command line input after being trimmed of excess space
   char* token;
-  char **paths;
-  char *pathname;
-  int pathCount = 0;
+  char **paths; //the list of paths specified by the user
+  char *pathname; //the pathname, including the requested program
+  int pathCount = 0; //number of paths specified by the user
   int pathCalled = 0; //variable to track whether built-in command "path" has ever been called
-  char** myargs;
-  char** rargs;
-  char** pargs;
-  char** prargs;
+  char** myargs; //the arguments in command
+  char** rargs; //the arguments before ">" in a valid redirect statement
+  char** pargs; //arguments in an individual command in a parallel command statement
+  char** prargs; //the arguments before ">" in a valid redirect statement, in a command in a parallel command statement
+  FILE* stream;
 
-  if (argc == 1) {
-      printf("grsh> ");
+  if ((argc == 1) || (argc == 2)) {
+      if (argc == 1) {
+          printf("grsh> ");
+          stream = stdin;
+      }//end if
+      else if (argc == 2) {
+          stream = fopen(argv[1], "r");
+          if (stream == NULL) {
+              char error_message[30] = "An error has occurred\n";
+              write(STDERR_FILENO, error_message, strlen(error_message));
+              exit(1);
+          }//end if
+      }//end else if
 
       //the shell interactive loop
-      while (getline(&line, &bufferSize, stdin) > 0) {
+      while (getline(&line, &bufferSize, stream) > 0) {
           //allocate enough memory to store the trimmed command
           command = (char *)calloc(1, (strlen(line)) + 1);
           //this goes outside the while loop to prevent a space before the trimmed command
           token = strtok_r(line, " \n\t", &line);
 
+          //just skip to the next iteration if nothing was inputted
           if (token == NULL) {
               free(command);
-              printf("grsh> ");
+              if (argc == 1) {
+                  printf("grsh> ");
+              }//end if
               continue;
-          }
+          }//end if
 
           strcat(command, token);
-          int count = 1;
+          int count = 1; //represents the number of arguments
 
           //end result of this while loop is a command fully trimmed of excess spaces
           while ((token = strtok_r(line, " \n\t", &line))) {
@@ -47,36 +62,52 @@ int main(int argc, char *argv[]) {
               count++;
           }//end while
 
-          //printf("%s\n", command);
-          //printf("%d\n", count);
+          //exit: built-in command
+          if ((strcmp(command, "exit")) == 0) {
+              int q;
+              if (pathCalled == 1) {
+                  for (q = 0; q < pathCount; q++) {
+                    free(paths[q]);
+                  }//end for
+
+                  free(paths);
+              }//end if
+
+              free(command);
+              exit(0);
+          }//end if
 
           int i;
-          int redirectionCount = 0;
-          int validRedirect = 0;
+          int redirectionCount = 0; //tracks number of >s
+          int validRedirect = 0; //determines whether the inputted command is a valid redirect statement
           int commandCount = 1; //number of commands inputted
           int validParallel = 0; //determines whether parallel commands were (validly) inputted
           char* ctoken;
+          //allocate memory for storing the arguments
           myargs = (char **)calloc((count+1), (sizeof(char *)));
+          //allocate memory for storing the arguments in a valid redirect statement
           rargs  = (char **)calloc((count-1), (sizeof(char *)));
+          //strtok_r needs to be performed on a copy of the original command
           char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
           strcpy(commandDup, command);
 
+          //now the individual arguments are put into myargs
           for (i = 0; i < count; i++) {
             ctoken = strtok_r(commandDup, " ", &commandDup);
-            myargs[i] = calloc((strlen(ctoken)), (sizeof(char)));
+            myargs[i] = calloc((strlen(ctoken)) + 1, (sizeof(char)));
             strcpy(myargs[i], ctoken);
             if ((strcmp(myargs[i], ">")) == 0) {
                 redirectionCount++;
-            }
+            }//end if
             //counts the number of commands based on how many "&" arguments there were
             else if ((strcmp(myargs[i], "&")) == 0) {
                 commandCount++;
-            }
-            //printf("%s ", myargs[i]);
-          }
+            }//end else if
+          }//end for
 
-          //printf("\n");
+          //execv requires that the last argument is NULL
           myargs[count] = NULL;
+          //in a valid redirect statement, the last argument (other than NULL) must be the file
           char *fname = myargs[count-1];
 
           //reduce the command count by 1 if the first argument was a "&"
@@ -85,9 +116,10 @@ int main(int argc, char *argv[]) {
           }//end if
 
           int ampCount = commandCount - 1;
-          int ampersandPositions[ampCount];
+          int ampersandPositions[ampCount]; //will keep track of the indexes of each "&"
           int trailingAmp = 0; //keeps track of whether the inputted command ended in "&"
 
+          //all of the arguments before the ">" in a valid redirect statement are put into rargs
           if ((redirectionCount == 1) && (count >= 3) && ((strcmp(myargs[count-2], ">")) == 0)) {
               validRedirect = 1;
               for (i = 0; i < (count-2); i++) {
@@ -141,19 +173,7 @@ int main(int argc, char *argv[]) {
               }//end if
           }//end if
 
-          printf("Valid: %d\n", validParallel);
-          printf("& positions: ");
-          for (i = 0; i < ampCount; i++) {
-            printf("%d ", ampersandPositions[i]);
-          }
-          printf("\nCommand count: %d\n", commandCount);
-
-          //exit: built-in command
-          if ((strcmp(command, "exit")) == 0) {
-              exit(0);
-          }//end if
-          //cd: built-in command
-          else if ((strcmp(myargs[0], "cd")) == 0) {
+          if ((strcmp(myargs[0], "cd")) == 0) {
               if (count != 2) {
                   char error_message[30] = "An error has occurred\n";
                   write(STDERR_FILENO, error_message, strlen(error_message));
@@ -165,7 +185,7 @@ int main(int argc, char *argv[]) {
                       write(STDERR_FILENO, error_message, strlen(error_message));
                   }//end if
               }//end else
-          }//end else if
+          }//end if
           else if ((strcmp(myargs[0], "path")) == 0) {
               if (pathCalled == 1) {
                   for (i = 0; i < pathCount; i++) {
@@ -176,28 +196,24 @@ int main(int argc, char *argv[]) {
               }//end if
 
               pathCount = count - 1;
+              //paths will beed to be freed on every consecutive call to "path," but not the first time
               pathCalled = 1;
               paths = (char**)calloc(pathCount, sizeof(char *));
               for (i = 0; i < pathCount; i++){
-                paths[i] = (char *)calloc(strlen(myargs[i+1]), sizeof(char));
+                paths[i] = (char *)calloc((strlen(myargs[i+1])) + 1, sizeof(char));
                 strcpy(paths[i], myargs[i+1]);
-              }
-              /*for (i = 0; i < pathCount; i++) {
-                printf("%s\n", paths[i]);
-              }*/
-          }
+              }//end for
+          }//end else if
           else {
-              //-------------Code continue-----------------
-              int success = 0;
+              int success = 0; //determines whether the pathname was successfully accessed at all
 
               if (validParallel == 0) {
+                  //each path is looped through, and upon successful access, fork and execv are called
                   for (i = 0; i < pathCount; i++) {
-                    //printf("%s\n", paths[i]);
                     pathname = (char *)calloc(1, (strlen(paths[i])) + (strlen(myargs[0])) + 2);
                     strcat(pathname, paths[i]);
                     strcat(pathname, "/");
                     strcat(pathname, myargs[0]);
-                    //printf("%s", pathname);
 
                     if ((access(pathname, X_OK)) == 0) {
                       success = 1;
@@ -211,22 +227,21 @@ int main(int argc, char *argv[]) {
                               //printf("(pid:%d) Child OwO\n", (int) getpid());
                               execv(pathname, myargs);
                               printf("Tried to print, didn't come out though.");
-                          }
+                          }//end if
                           else if (validRedirect == 1) {
                               freopen(fname, "w", stdout);
                               freopen(fname, "w", stderr);
                               execv(pathname, rargs);
                               printf("Uh, tried to print. Whatever.");
-                          }
+                          }//end else if
                       }//end else if
                       else {
-                          //int wc = wait(NULL);
                           wait(NULL);
                           //printf("(pid:%d) Parent UwU (child:%d)\n", (int) getpid(), wc);
                       }//end else
                     }//end if
 
-                    free(pathname);
+                    free(pathname); //must be freed before pathname is has memory allocated on the next iteration
                   }//end for
 
                   if (success == 0) {
@@ -235,28 +250,27 @@ int main(int argc, char *argv[]) {
                   }//end if
               }//end if
               else if (validParallel == 1) {
-                  int j;
-                  int k;
+                  int j; //index tracking; does not get reset after each iteration of the outer for loop
+                  int k; //index tracking
+                  //loops through every command according to indexes in pargs
                   for (i = 0; i < commandCount; i++) {
-                    int psize;
+                    int psize; //size of pargs, including the required NULL
                     redirectionCount = 0;
                     validRedirect = 0;
                     success = 0;
 
+                    //this will contain arguments from index 0 to the first "&"
                     if (i == 0) {
                          pargs = (char **)calloc(ampersandPositions[i] + 1, (sizeof(char *)));
                          psize = ampersandPositions[i] + 1;
 
+                         //arguments are added to pargs
                          for (j = 0; j < (psize-1); j++) {
                            pargs[j] = myargs[j];
                          }//end for
                          pargs[psize-1] = NULL;
-                         /*int l = 0;
-                         for (l = 0; l < (psize-1); l++) {
-                           printf("%s ", pargs[l]);
-                         }
-                         printf("\n");*/
                     }//end if
+                    //this will contain arguments between &s
                     else if ((i < (commandCount-1)) || (trailingAmp == 1)) {
                         pargs = (char **)calloc((ampersandPositions[i])-(ampersandPositions[i-1]), (sizeof(char *)));
                         psize = (ampersandPositions[i])-(ampersandPositions[i-1]);
@@ -266,16 +280,12 @@ int main(int argc, char *argv[]) {
 
                         while (j < (ampersandPositions[i])) {
                             pargs[k] = myargs[j];
-                            j++; //4
-                            k++; //2
+                            j++;
+                            k++;
                         }//end while
                         pargs[k] = NULL;
-                        /*int l = 0;
-                        for (l = 0; l < (psize-1); l++) {
-                          printf("%s ", pargs[l]);
-                        }
-                        printf("\n");*/
                     }//end else if
+                    //this will contain arguments from after the last relevant "&" to the very last argument
                     else {
                         pargs = (char **)calloc(count - (ampersandPositions[i-1]), (sizeof(char *)));
                         psize = count - (ampersandPositions[i-1]);
@@ -289,15 +299,12 @@ int main(int argc, char *argv[]) {
                             k++;
                         }//end while
                         pargs[k] = NULL;
-                        /*int l = 0;
-                        for (l = 0; l < (psize-1); l++) {
-                          printf("%s ", pargs[l]);
-                        }
-                        printf("\n");*/
                     }//end else
 
+                    //allocate memory for prargs
                     prargs  = (char **)calloc((psize-2), (sizeof(char *)));
 
+                    //count number of >s
                     for (k = 0; k < (psize-1); k++) {
                       if ((strcmp(pargs[k], ">")) == 0) {
                           redirectionCount++;
@@ -306,6 +313,7 @@ int main(int argc, char *argv[]) {
 
                     char *pfname = pargs[psize-2];
 
+                    //again, validating whether there is a valid redirect statement
                     if ((redirectionCount == 1) && (psize >= 4) && ((strcmp(pargs[psize-3], ">")) == 0)) {
                         validRedirect = 1;
                         for (k = 0; k < (psize-3); k++) {
@@ -313,20 +321,13 @@ int main(int argc, char *argv[]) {
                         }//end for
                         prargs[psize-3] = NULL;
                     }//end if
-                    /*if (validRedirect == 1) {
-                        for (k = 0; k < (psize-3); k++) {
-                          printf("%s ", prargs[k]);
-                        }
-                    }*/
 
-                    //-------------------FORK AND EXEC--------------------------------
+                    //each path will be looped through in an attempt to successfully access the program
                     for (k = 0; k < pathCount; k++) {
-                      //printf("%s\n", paths[k]);
                       pathname = (char *)calloc(1, (strlen(paths[k])) + (strlen(pargs[0])) + 2);
                       strcat(pathname, paths[k]);
                       strcat(pathname, "/");
                       strcat(pathname, pargs[0]);
-                      //printf("%s", pathname);
 
                       if ((access(pathname, X_OK)) == 0) {
                           success = 1;
@@ -348,11 +349,6 @@ int main(int argc, char *argv[]) {
                                   printf("Uh, tried to print. Whatever.");
                               }
                           }//end else if
-                          else {
-                              //int wc = wait(NULL);
-                              wait(NULL);
-                              //printf("(pid:%d) Parent UwU (child:%d)\n", (int) getpid(), wc);
-                          }//end else
                       }//end if
 
                       free(pathname);
@@ -364,14 +360,16 @@ int main(int argc, char *argv[]) {
                     }//end if
                     //-------------------FORK AND EXEC--------------------------------
 
-                    printf("\n");
                     free(pargs);
                     free(prargs);
                   }//end for
 
-                  //for (i = 0; i < commandCount
+                  //after fork and execv have been called for all specified programs, now the parent process will
+                  //wait for each child to terminate in some undetermined order
+                  for (i = 0; i < commandCount; i++) {
+                    wait(NULL);
+                  }//end for
               }//end else if
-              //-------------Code      end-----------------
           }//end else
 
           free(command);
@@ -383,7 +381,9 @@ int main(int argc, char *argv[]) {
           free(myargs);
           free(rargs);
 
-          printf("grsh> ");
+          if (argc == 1) {
+              printf("grsh> ");
+          }//end if
       }//end while
   }//end if
 

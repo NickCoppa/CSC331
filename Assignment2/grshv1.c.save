@@ -1,0 +1,30 @@
+/*
+* File : grshv1.c
+*/
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+int main(int argc, char *argv[]) {
+  size_t bufferSize = 0;
+  char *line = NULL;
+  char* token; 
+  //char* rest = line; 
+
+  printf("grsh> ");
+
+  while (getline(&line, &bufferSize, stdin) > 0) {
+      char* token; 
+    char* rest = str; 
+      while ((token = strtok_r(rest, " ", &rest))) { 
+          printf("%s\n", token);
+      }
+
+      if ((strcmp(line, "exit\n")) == 0) {
+          exit(0);
+      }//end if
+
+      printf("grsh> ");
+  }//end while
+
+  return 0;
+}//end main

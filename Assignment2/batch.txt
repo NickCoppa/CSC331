@@ -1,0 +1,20 @@
+ls
+path /bin
+clear
+path /bin /bin/usr
+pwd
+cd ..
+pwd
+cd Assignment2
+pwd
+ls & pwd &
+ls & pwd
+ls > tut.txt & pwd > tot.txt &
+ls -1 > tet.txt & cat grshv1.c > tat.txt
+>
+ls >
+ls > > yolo.txt
+ls sdlfkjsdlkfj > uhh.txt
+ls & > & pwd
+path /bin /usr/bin
+ls cmdkckc > tyty.txt & pwd > tt.txt & ls sssss > ret.txt
