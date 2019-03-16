@@ -91,8 +91,11 @@ int main(int argc, char *argv[]) {
           //allocate memory for storing the arguments in a valid redirect statement
           rargs  = (char **)calloc((count-1), (sizeof(char *)));
           //strtok_r needs to be performed on a copy of the original command
-          char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
-          strcpy(commandDup, command);
+          //char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
+          //strcpy(commandDup, command);
+          char commDup[(strlen(command))+1];
+          strcpy(commDup, command);
+          char *commandDup = commDup;
 
           //now the individual arguments are put into myargs
           for (i = 0; i < count; i++) {
@@ -140,7 +143,7 @@ int main(int argc, char *argv[]) {
               }//end for
               rargs[count-2] = NULL;
           }//end if
-          else if ((redirectionCount > 1) || ((redirectionCount == 1) && ((strcmp(myargs[count-2], ">")) != 0))) {
+          else if ((redirectionCount > 1) || ((redirectionCount == 1) && ( (count < 3) || ((strcmp(myargs[count-2], ">")) != 0)))) {
               redirectError = 1;
           }//end else if
 
@@ -340,7 +343,8 @@ int main(int argc, char *argv[]) {
                         }//end for
                         prargs[psize-3] = NULL;
                     }//end if
-                    else if ((redirectionCount > 1) || ((redirectionCount == 1) && ((strcmp(myargs[psize-3], ">")) != 0))) {
+                    else if ((redirectionCount > 1) || ((redirectionCount == 1) 
+                            && ((psize < 4) || ((strcmp(myargs[psize-3], ">")) != 0)))) {
                         redirectError = 1;
                     }//end else if
 

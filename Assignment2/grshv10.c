@@ -1,6 +1,6 @@
 /*
 * Nicholas Coppa
-* File : grsh.c
+* File : grshv10.c
 */
 #include <stdlib.h>
 #include <stdio.h>
@@ -83,7 +83,6 @@ int main(int argc, char *argv[]) {
           int i;
           int redirectionCount = 0; //tracks number of >s
           int validRedirect = 0; //determines whether the inputted command is a valid redirect statement
-          int redirectError = 0; //determines whether there is a syntax error in regards to a statement using ">"
           int commandCount = 1; //number of commands inputted
           int validParallel = 0; //determines whether parallel commands were (validly) inputted
           char* ctoken;
@@ -92,11 +91,8 @@ int main(int argc, char *argv[]) {
           //allocate memory for storing the arguments in a valid redirect statement
           rargs  = (char **)calloc((count-1), (sizeof(char *)));
           //strtok_r needs to be performed on a copy of the original command
-          //char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
-          //strcpy(commandDup, command);
-          char commDup[(strlen(command))+1];
-          strcpy(commDup, command);
-          char *commandDup = commDup;
+          char *commandDup = (char *)calloc(1, (strlen(command)) + 1);
+          strcpy(commandDup, command);
 
           //now the individual arguments are put into myargs
           for (i = 0; i < count; i++) {
@@ -144,9 +140,6 @@ int main(int argc, char *argv[]) {
               }//end for
               rargs[count-2] = NULL;
           }//end if
-          else if ((redirectionCount > 1) || ((redirectionCount == 1) && ( (count < 3) || ((strcmp(myargs[count-2], ">")) != 0)))) {
-              redirectError = 1;
-          }//end else if
 
           //if there is only one command inputted, then no parallel commands are taking place
           if (commandCount > 1) {
@@ -224,52 +217,46 @@ int main(int argc, char *argv[]) {
               int success = 0; //determines whether the pathname was successfully accessed at all
 
               if (validParallel == 0) {
-                  if (redirectError == 0) {
-                      //each path is looped through, and upon successful access, fork and execv are called
-                      for (i = 0; i < pathCount; i++) {
-                        pathname = (char *)calloc(1, (strlen(paths[i])) + (strlen(myargs[0])) + 2);
-                        strcat(pathname, paths[i]);
-                        strcat(pathname, "/");
-                        strcat(pathname, myargs[0]);
+                  //each path is looped through, and upon successful access, fork and execv are called
+                  for (i = 0; i < pathCount; i++) {
+                    pathname = (char *)calloc(1, (strlen(paths[i])) + (strlen(myargs[0])) + 2);
+                    strcat(pathname, paths[i]);
+                    strcat(pathname, "/");
+                    strcat(pathname, myargs[0]);
 
-                        if ((access(pathname, X_OK)) == 0) {
-                          success = 1;
-                          int rc = fork();
-                          if (rc < 0) {
-                              char error_message[30] = "An error has occurred\n";
-                              write(STDERR_FILENO, error_message, strlen(error_message));
-                          }//end if
-                          else if (rc == 0) {
-                              if (validRedirect == 0) {
-                                  //printf("(pid:%d) Child OwO\n", (int) getpid());
-                                  execv(pathname, myargs);
-                                  printf("Tried to print, didn't come out though.");
-                              }//end if
-                              else if (validRedirect == 1) {
-                                  freopen(fname, "w", stdout);
-                                  freopen(fname, "w", stderr);
-                                  execv(pathname, rargs);
-                                  printf("Uh, tried to print. Whatever.");
-                              }//end else if
-                          }//end else if
-                          else {
-                              wait(NULL);
-                              //printf("(pid:%d) Parent UwU (child:%d)\n", (int) getpid(), wc);
-                          }//end else
-                        }//end if
-
-                        free(pathname); //must be freed before pathname is has memory allocated on the next iteration
-                      }//end for
-
-                      if (success == 0) {
+                    if ((access(pathname, X_OK)) == 0) {
+                      success = 1;
+                      int rc = fork();
+                      if (rc < 0) {
                           char error_message[30] = "An error has occurred\n";
                           write(STDERR_FILENO, error_message, strlen(error_message));
                       }//end if
-                  }//end if
-                  else if (redirectError == 1) {
+                      else if (rc == 0) {
+                          if (validRedirect == 0) {
+                              //printf("(pid:%d) Child OwO\n", (int) getpid());
+                              execv(pathname, myargs);
+                              printf("Tried to print, didn't come out though.");
+                          }//end if
+                          else if (validRedirect == 1) {
+                              freopen(fname, "w", stdout);
+                              freopen(fname, "w", stderr);
+                              execv(pathname, rargs);
+                              printf("Uh, tried to print. Whatever.");
+                          }//end else if
+                      }//end else if
+                      else {
+                          wait(NULL);
+                          //printf("(pid:%d) Parent UwU (child:%d)\n", (int) getpid(), wc);
+                      }//end else
+                    }//end if
+
+                    free(pathname); //must be freed before pathname is has memory allocated on the next iteration
+                  }//end for
+
+                  if (success == 0) {
                       char error_message[30] = "An error has occurred\n";
                       write(STDERR_FILENO, error_message, strlen(error_message));
-                  }//end else if
+                  }//end if
               }//end if
               else if (validParallel == 1) {
                   int j; //index tracking; does not get reset after each iteration of the outer for loop
@@ -279,7 +266,6 @@ int main(int argc, char *argv[]) {
                     int psize; //size of pargs, including the required NULL
                     redirectionCount = 0;
                     validRedirect = 0;
-                    redirectError = 0;
                     success = 0;
 
                     //this will contain arguments from index 0 to the first "&"
@@ -344,53 +330,43 @@ int main(int argc, char *argv[]) {
                         }//end for
                         prargs[psize-3] = NULL;
                     }//end if
-                    else if ((redirectionCount > 1) || ((redirectionCount == 1) 
-                            && ((psize < 4) || ((strcmp(myargs[psize-3], ">")) != 0)))) {
-                        redirectError = 1;
-                    }//end else if
 
-                    if (redirectError == 0) {
-                        //each path will be looped through in an attempt to successfully access the program
-                        for (k = 0; k < pathCount; k++) {
-                          pathname = (char *)calloc(1, (strlen(paths[k])) + (strlen(pargs[0])) + 2);
-                          strcat(pathname, paths[k]);
-                          strcat(pathname, "/");
-                          strcat(pathname, pargs[0]);
+                    //each path will be looped through in an attempt to successfully access the program
+                    for (k = 0; k < pathCount; k++) {
+                      pathname = (char *)calloc(1, (strlen(paths[k])) + (strlen(pargs[0])) + 2);
+                      strcat(pathname, paths[k]);
+                      strcat(pathname, "/");
+                      strcat(pathname, pargs[0]);
 
-                          if ((access(pathname, X_OK)) == 0) {
-                              success = 1;
-                              int rc = fork();
-                              if (rc < 0) {
-                                  char error_message[30] = "An error has occurred\n";
-                                  write(STDERR_FILENO, error_message, strlen(error_message));
-                              }//end if
-                              else if (rc == 0) {
-                                  if (validRedirect == 0) {
-                                      //printf("(pid:%d) Child OwO\n", (int) getpid());
-                                      execv(pathname, pargs);
-                                      printf("Tried to print, didn't come out though.");
-                                  }
-                                  else if (validRedirect == 1) {
-                                      freopen(pfname, "w", stdout);
-                                      freopen(pfname, "w", stderr);
-                                      execv(pathname, prargs);
-                                      printf("Uh, tried to print. Whatever.");
-                                  }
-                              }//end else if
+                      if ((access(pathname, X_OK)) == 0) {
+                          success = 1;
+                          int rc = fork();
+                          if (rc < 0) {
+                              char error_message[30] = "An error has occurred\n";
+                              write(STDERR_FILENO, error_message, strlen(error_message));
                           }//end if
+                          else if (rc == 0) {
+                              if (validRedirect == 0) {
+                                  //printf("(pid:%d) Child OwO\n", (int) getpid());
+                                  execv(pathname, pargs);
+                                  printf("Tried to print, didn't come out though.");
+                              }
+                              else if (validRedirect == 1) {
+                                  freopen(pfname, "w", stdout);
+                                  freopen(pfname, "w", stderr);
+                                  execv(pathname, prargs);
+                                  printf("Uh, tried to print. Whatever.");
+                              }
+                          }//end else if
+                      }//end if
 
-                          free(pathname);
-                        }//end for
+                      free(pathname);
+                    }//end for
 
-                        if (success == 0) {
-                            char error_message[30] = "An error has occurred\n";
-                            write(STDERR_FILENO, error_message, strlen(error_message));
-                        }//end if
-                    }//end if
-                    else if (redirectError == 1) {
+                    if (success == 0) {
                         char error_message[30] = "An error has occurred\n";
                         write(STDERR_FILENO, error_message, strlen(error_message));
-                    }//end else if
+                    }//end if
 
                     free(pargs);
                     free(prargs);

@@ -1,0 +1,1 @@
+rm tet.txt & rm tot.txt & rm tat.txt & rm tut.txt & rm uhh.txt & rm ret.txt & rm tt.txt & rm tyty.txt
